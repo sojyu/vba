@@ -1,0 +1,133 @@
+Private Const DEFAULT_DIR_PATH As String = "."
+Private Const DEFAULT_FILE_NAME As String = "LOG"
+Private Const DEFAULT_EXTENSION As String = "log"
+
+Private Const DEFAULT_BUFFER_SIZE As Long = 65536
+
+' ログ出力モード
+Enum LoggingMode
+  SEQUENTIAL = 1 ' 逐次出力モード
+  BUFFERING = 2   ' バッファ出力モード
+  BURST = 3 ' 一括出力モード
+End Enum
+
+Dim logfilePath_ As String '  ログファイル名
+Dim operator_ As String ' 作業者名
+Dim startTime_ As Date ' ログ取得開始日時
+Dim endTime_ As Date ' ログ取得終了日時
+
+Dim buffer_ As String ' バッファ
+Dim bufferSize_ As Long ' バッファサイズ
+Dim mode_ As LoggingMode ' ログ出力モード
+
+
+' ========================================
+'   Property メソッド
+' ========================================
+Property Let fileName(ByVal val As String)
+  Call setFilePath(DEFAULT_DIR_PATH, val, DEFAULT_EXTENSION, startTime_)
+End Property
+
+Property Get logfilePath() As String
+  logfilePath = logfilePath_
+End Property
+
+Property Let operator(ByVal val As String)
+  operator_ = val
+End Property
+
+Property Get operator() As String
+  operator = operator_
+End Property
+
+Property Let mode(ByVal val As LoggingMode)
+  mode_ = val
+End Property
+
+Property Get startTime() As Date
+  startTime = startTime_
+End Property
+
+Property Get endTime() As Date
+  endTime = endTime_
+End Property
+
+
+' ========================================
+'   Public メソッド
+' ========================================
+
+Public Sub Class_Initialize()
+  Call LoggingStart
+  
+  Call setFilePath(DEFAULT_DIR_PATH, DEFAULT_FILE_NAME, DEFAULT_EXTENSION, startTime_)
+  operator_ = "Unknown"
+  
+  buffer_ = ""
+  bufferSize_ = DEFAULT_BUFFER_SIZE
+  mode_ = LoggingMode.BUFFERING
+End Sub
+
+Public Sub Class_Terminate()
+  Call Flush
+  
+  Call LoggingStop
+  buffer_ = vbCrLf
+  buffer_ = buffer_ & "==================================================" & vbCrLf
+  buffer_ = buffer_ & "    作業者名：" & operator_ & vbCrLf
+  buffer_ = buffer_ & "    開始日時：" & Format(startTime_, "yyyy/mm/dd hh:nn:ss") & vbCrLf
+  buffer_ = buffer_ & "    終了日時：" & Format(endTime_, "yyyy/mm/dd hh:nn:ss") & vbCrLf
+  buffer_ = buffer_ & "==================================================" & vbCrLf
+  Call Flush
+End Sub
+
+' ログを追加する
+Public Sub add(ByVal logStr As String)
+  If buffer_ <> "" Then buffer_ = buffer_ & vbCrLf
+  buffer_ = buffer_ & logStr
+  
+  Select Case mode_
+    Case LoggingMode.SEQUENTIAL
+      Call Flush
+    Case LoggingMode.BUFFERING
+      If Len(buffer_) > bufferSize_ Then
+        Call Flush
+      End If
+  End Select
+End Sub
+
+
+' ========================================
+'   Private メソッド
+' ========================================
+
+Private Sub setFilePath(ByVal dirPath As String, ByVal fileName As String, ByVal extension As String, ByRef operateTime As Date)
+  Set fileObject = CreateObject("Scripting.FileSystemObject")
+  logfilePath_ = fileObject.BuildPath(dirPath, fileName & "_" & Format(operateTime, "yyyymmddnnss") & "." & extension)
+  Set fileObject = Nothing
+End Sub
+
+' ログ取得を開始する
+Private Sub LoggingStart()
+  startTime_ = Now()
+End Sub
+
+' ログ取得を終了する
+Private Sub LoggingStop()
+  endTime_ = Now()
+End Sub
+
+' ログを出力する
+Private Sub Flush()
+  Dim fileObject As Object
+  Dim writeStream As Object
+  
+  Set fileObject = CreateObject("Scripting.FileSystemObject")
+  Set writeStream = fileObject.OpenTextFile(logfilePath_, 8, True)
+  
+  writeStream.WriteLine RTrim(buffer_)
+  buffer_ = ""
+  
+  Set writeStream = Nothing
+  Set fileObject = Nothing
+End Sub
