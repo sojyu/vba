@@ -1,0 +1,42 @@
+Option Explicit
+
+' ========================================
+'   変数定義
+' ========================================
+Dim dict As Object
+
+' ========================================
+'   Property メソッド
+' ========================================
+Property Get counter() As Object
+  Set counter = dict
+End Property
+
+' ========================================
+'   Public メソッド
+' ========================================
+Public Sub Class_Initialize()
+  Set dict = CreateObject("Scripting.Dictionary")
+End Sub
+
+Public Sub Class_Terminate()
+  Set dict = Nothing
+End Sub
+
+' 指定したkeyの出現回数を加算する
+Public Sub add(ByRef key As Variant)
+  If dict.Exists(key) Then
+    dict(key) = dict(key) + 1
+  Else
+    dict(key) = 1
+  End If
+End Sub
+
+' 指定したkeyの出現回数を取得する
+Public Function getCount(ByRef key As Variant) As Long
+  If dict.Exists(key) Then
+    getCount = dict(key)
+  Else
+    getCount = 0
+  End If
+End Function
