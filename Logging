@@ -1,9 +1,15 @@
+' ========================================
+'   定数定義
+' ========================================
 Private Const DEFAULT_DIR_PATH As String = "."
 Private Const DEFAULT_FILE_NAME As String = "LOG"
 Private Const DEFAULT_EXTENSION As String = "log"
 
 Private Const DEFAULT_BUFFER_SIZE As Long = 65536
 
+' ========================================
+'   型定義
+' ========================================
 ' ログ出力モード
 Enum LoggingMode
   SEQUENTIAL = 1 ' 逐次出力モード
@@ -11,6 +17,9 @@ Enum LoggingMode
   BURST = 3 ' 一括出力モード
 End Enum
 
+' ========================================
+'   変数定義
+' ========================================
 Dim logfilePath_ As String '  ログファイル名
 Dim operator_ As String ' 作業者名
 Dim startTime_ As Date ' ログ取得開始日時
@@ -20,6 +29,7 @@ Dim buffer_ As String ' バッファ
 Dim bufferSize_ As Long ' バッファサイズ
 Dim mode_ As LoggingMode ' ログ出力モード
 
+Dim appCounter_ As AppearanceCounter ' 出現回数
 
 ' ========================================
 '   Property メソッド
@@ -40,6 +50,10 @@ Property Get operator() As String
   operator = operator_
 End Property
 
+Property Let bufferSize(ByVal val As Long)
+  bufferSize_ = val
+End Property
+
 Property Let mode(ByVal val As LoggingMode)
   mode_ = val
 End Property
@@ -52,6 +66,10 @@ Property Get endTime() As Date
   endTime = endTime_
 End Property
 
+Property Set appCounter(ByRef val As AppearanceCounter)
+  Set appCounter_ = val
+End Property
+
 
 ' ========================================
 '   Public メソッド
@@ -62,22 +80,37 @@ Public Sub Class_Initialize()
   
   Call setFilePath(DEFAULT_DIR_PATH, DEFAULT_FILE_NAME, DEFAULT_EXTENSION, startTime_)
   operator_ = "Unknown"
-  
   buffer_ = ""
   bufferSize_ = DEFAULT_BUFFER_SIZE
   mode_ = LoggingMode.BUFFERING
+  Set appCounter_ = Nothing
 End Sub
 
 Public Sub Class_Terminate()
+  ' バッファの出力
   Call Flush
   
+  ' 処理件数の出力
+  Dim key As Variant
+  If Not appCounter_ Is Nothing Then
+    buffer_ = vbCrLf
+    buffer_ = buffer_ & "==================================================" & vbCrLf
+    For Each key In appCounter_.counter
+      buffer_ = buffer_ & Space(20 - Len(key)) & key & "：" & Space(8 - Len(appCounter_.counter(key))) & appCounter_.counter(key) & vbCrLf
+    Next
+    Call Flush
+    
+    Set appCounter_ = Nothing
+  End If
+  
+  ' 処理時間の出力
   Call LoggingStop
   buffer_ = vbCrLf
   buffer_ = buffer_ & "==================================================" & vbCrLf
   buffer_ = buffer_ & "    作業者名：" & operator_ & vbCrLf
   buffer_ = buffer_ & "    開始日時：" & Format(startTime_, "yyyy/mm/dd hh:nn:ss") & vbCrLf
   buffer_ = buffer_ & "    終了日時：" & Format(endTime_, "yyyy/mm/dd hh:nn:ss") & vbCrLf
-  buffer_ = buffer_ & "==================================================" & vbCrLf
+  buffer_ = buffer_ & "=================================================="
   Call Flush
 End Sub
 
@@ -101,6 +134,7 @@ End Sub
 '   Private メソッド
 ' ========================================
 
+' ログファイルのフルパスを設定する
 Private Sub setFilePath(ByVal dirPath As String, ByVal fileName As String, ByVal extension As String, ByRef operateTime As Date)
   Set fileObject = CreateObject("Scripting.FileSystemObject")
   logfilePath_ = fileObject.BuildPath(dirPath, fileName & "_" & Format(operateTime, "yyyymmddnnss") & "." & extension)
